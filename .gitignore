@@ -16,3 +16,4 @@ book/book/
 
 # Written by the chapter 9 exercises when you run the server by hand
 minidb.wal
+.idea

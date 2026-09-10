@@ -8,5 +8,5 @@ title = "Async Rust"
 git-repository-url = "https://github.com/mainmatter/async-rust-workshop"
 site-url = "/async-rust-workshop/"
 
-[preprocessor.exercise-linker]
-exercise_root_url = "https://github.com/mainmatter/async-rust-workshop/tree/main/exercises"
+#[preprocessor.exercise-linker]
+#exercise_root_url = "https://github.com/mainmatter/async-rust-workshop/tree/main/exercises"
