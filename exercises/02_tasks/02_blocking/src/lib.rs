@@ -152,7 +152,7 @@ pub enum ValueError {
 
 /// Computes the checksum without holding on to the runtime.
 pub async fn checksum_async(store: Arc<Store>) -> u64 {
-    todo!("the work is fine, the thread it runs on is not")
+    tokio::task::spawn_blocking(move || checksum(&store)).await.expect("checksum failed to compute")
 }
 
 /// Computes a checksum over the whole store, using nothing but the CPU and taking its time.
