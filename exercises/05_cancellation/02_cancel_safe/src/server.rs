@@ -38,17 +38,23 @@ where
 {
     let (mut reader, mut writer) = tokio::io::split(stream);
     let mut housekeeping = interval(TICK);
+    let mut requests = BufReader::new(reader).lines();
+
+    let idle_deadline = sleep(idle);
+    tokio::pin!(idle_deadline);
 
     loop {
         let line = tokio::select! {
-            line = read_line_by_hand(&mut reader) => line?,
+            line = requests.next_line() => line?,
             _ = housekeeping.tick() => continue,
-            _ = sleep(idle) => return Ok(()),
+            _ = &mut idle_deadline => return Ok(()),
         };
 
         let Some(line) = line else {
             return Ok(());
         };
+
+        idle_deadline.as_mut().reset(tokio::time::Instant::now() + idle);
 
         let response = match Request::parse(&line) {
             Ok(request) => store.apply(request).await,

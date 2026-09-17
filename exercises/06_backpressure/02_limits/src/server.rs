@@ -1,13 +1,13 @@
 //! The socket half of `minidb`.
 
 use std::{io, time::Duration};
-
+use std::sync::Arc;
 use tokio::{
     io::{AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufReader},
     net::TcpListener,
     time::{Instant, interval, sleep, timeout},
 };
-
+use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use crate::{
     actor::StoreHandle,
     protocol::{Request, Response},
@@ -31,18 +31,30 @@ pub async fn serve(
     store: StoreHandle,
     max_connections: usize,
 ) -> io::Result<()> {
+    let permits = Arc::new(Semaphore::new(max_connections));
+
     loop {
+        let permit = permits.clone()
+            .acquire_owned()
+            .await
+            .expect("never closed");
+
         let (stream, _) = listener.accept().await?;
         let store = store.clone();
 
         tokio::spawn(async move {
-            let _ = handle_connection(stream, &store, IDLE_LIMIT).await;
+            let _ = handle_connection(stream, &store, IDLE_LIMIT, permit).await;
         });
     }
 }
 
 /// Talks to one client until it goes away or stops saying anything.
-pub async fn handle_connection<S>(stream: S, store: &StoreHandle, idle: Duration) -> io::Result<()>
+pub async fn handle_connection<S>(
+    stream: S,
+    store: &StoreHandle,
+    idle: Duration,
+    _permit: OwnedSemaphorePermit,
+) -> io::Result<()>
 where
     S: AsyncRead + AsyncWrite,
 {

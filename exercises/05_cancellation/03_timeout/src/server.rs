@@ -7,7 +7,7 @@ use tokio::{
     net::TcpListener,
     time::{Instant, interval, sleep},
 };
-
+use tokio::time::timeout;
 use crate::{
     actor::StoreHandle,
     protocol::{Request, Response},
@@ -60,7 +60,7 @@ where
         idle_deadline.as_mut().reset(Instant::now() + idle);
 
         let response = match Request::parse(&line) {
-            Ok(request) => store.apply(request).await,
+            Ok(request) => timeout(REQUEST_LIMIT, store.apply(request)).await.unwrap_or_else(|_| Response::Error("busy".to_string())),
             Err(error) => Response::Error(error.to_string()),
         };
 

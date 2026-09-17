@@ -7,10 +7,8 @@ use tokio::{
     net::{TcpListener, TcpStream},
 };
 
-use crate::{
-    actor::StoreHandle,
-    protocol::{Request, Response},
-};
+use crate::{actor, actor::StoreHandle, protocol::{Request, Response}};
+use crate::actor::Command;
 
 /// Serves every client that turns up, each on a task of its own, all talking to one store task.
 pub async fn serve(listener: TcpListener, store: StoreHandle) -> io::Result<()> {
@@ -26,7 +24,19 @@ pub async fn serve(listener: TcpListener, store: StoreHandle) -> io::Result<()> 
 
 /// Talks to one client until it goes away.
 pub async fn handle_connection(stream: TcpStream, store: &StoreHandle) -> io::Result<()> {
-    todo!("the same loop again, now asking the store task instead of locking anything")
+    let (reader, mut writer) = stream.into_split();
+    let mut requests = BufReader::new(reader).lines();
+
+    while let Some(line) = requests.next_line().await? {
+        let response = match Request::parse(&line) {
+            Ok(request) => store.apply(request).await,
+            Err(error) => Response::Error(error.to_string()),
+        };
+
+        writer.write_all(format!("{response}\n").as_bytes()).await?;
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]

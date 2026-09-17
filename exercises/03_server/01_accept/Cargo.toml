@@ -7,6 +7,7 @@ publish.workspace = true
 
 [dependencies]
 tokio = { workspace = true, features = ["io-std", "io-util", "macros", "net", "rt", "rt-multi-thread"] }
+log = "0.4.34"
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["macros", "rt", "time"] }

@@ -35,7 +35,16 @@ where
     let (reader, mut writer) = tokio::io::split(stream);
     let mut requests = BufReader::new(reader).lines();
 
-    while let Some(line) = requests.next_line().await? {
+    loop {
+        let line = tokio::select! {
+            line = requests.next_line() => line?,
+            _ = tokio::time::sleep(idle) => return Ok(()),
+        };
+
+        let Some(line) = line else {
+            return Ok(());
+        };
+
         let response = match Request::parse(&line) {
             Ok(request) => store.apply(request).await,
             Err(error) => Response::Error(error.to_string()),
@@ -43,8 +52,6 @@ where
 
         writer.write_all(format!("{response}\n").as_bytes()).await?;
     }
-
-    Ok(())
 }
 
 #[cfg(test)]
